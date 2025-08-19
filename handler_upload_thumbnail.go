@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
+	"github.com/relevantfender/tubely/internal/auth"
 )
 
 func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +71,10 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	)
 	newFile, err := os.Create(filePath)
 
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error while creating a file", err)
+	}
+
 	_, err = io.Copy(newFile, file)
 
 	if err != nil {
@@ -95,7 +99,6 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error while updating the video metadata", err)
 	}
-
 	respondWithJSON(w, http.StatusOK, video)
 }
 
@@ -105,7 +108,7 @@ func getFileExtension(mediaType string) (string, error) {
 		if len(data) == 2 {
 			return data[1], nil
 		}
-		return "", errors.New("No extension available in the header")
+		return "", errors.New("no extension available in the header")
 	}
 
 	return "", errors.New("passed mediaType is an empty string")
