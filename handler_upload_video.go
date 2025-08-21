@@ -97,11 +97,41 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
 	temp.Seek(0, io.SeekStart)
 
-	key := fmt.Sprintf("%s.%s", pathValue, extension)
+	aspectRatio, err := getVideoAspectRatio(temp.Name())
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error while reading aspect ratio of the video", err)
+		return
+	}
+	processedVideoPath, err := processVideoForFastStart(temp.Name())
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error while processing video for fast startup", err)
+		return
+	}
+
+	processedVideo, err := os.Open(processedVideoPath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error while opening processing video for fast startup", err)
+		return
+	}
+	defer processedVideo.Close()
+
+	processedVideo.Seek(0, io.SeekStart)
+	defer os.Remove(processedVideo.Name())
+
+	switch aspectRatio {
+	case "16:9":
+		aspectRatio = "landscape"
+	case "9:16":
+		aspectRatio = "portrait"
+	}
+
+	key := fmt.Sprintf("%s/%s.%s", aspectRatio, pathValue, extension)
 	inputs := s3.PutObjectInput{
 		Bucket:      &cfg.s3Bucket,
 		Key:         &key,
-		Body:        temp,
+		Body:        processedVideo,
 		ContentType: &mediatype,
 	}
 

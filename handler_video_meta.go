@@ -151,22 +151,37 @@ func getVideoAspectRatio(filePath string) (string, error) {
 	width := streamData.Stream[0].Width
 	height := streamData.Stream[0].Height
 
-	gcd := gcd(width, height)
+	actualRatio := float64(width) / float64(height)
+	var targetRatio float64
+	tolerance := 0.01
 
-	width = int(math.Round(float64(width / gcd)))
-	height = int(math.Round(float64(height / gcd)))
+	if width != 0 && height != 0 {
+		targetRatio = 16.0 / 9.0
 
-	ratio := fmt.Sprintf("%d:%d", width, height)
+		if math.Abs(actualRatio-targetRatio) < tolerance {
+			return "16:9", nil
 
-	if ratio != "16:9" && ratio != "9:16" {
+		}
+		targetRatio = 9.0 / 16.0
+
+		if math.Abs(actualRatio-targetRatio) < tolerance {
+			return "9:16", nil
+		}
+
 		return "other", nil
-	}
-	return ratio, nil
-}
 
-func gcd(a, b int) int {
-	for b != 0 {
-		a, b = b, a%b
 	}
-	return a
+	return "", fmt.Errorf("error while processing aspect ratios")
+
+}
+func processVideoForFastStart(filePath string) (string, error) {
+	outputFilePath := filePath + ".processing"
+
+	args := []string{"-i", filePath, "-c", "copy", "-movflags", "faststart", "-f", "mp4", outputFilePath}
+	cmd := exec.Command("ffmpeg", args...)
+	err := cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("error while running command: %v", err)
+	}
+	return outputFilePath, nil
 }
